@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>OpenAI Prompt Saver</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div>
+    <h1>OpenAI Prompt Saver</h1>
+    <input type="text" id="promptName" placeholder="Enter prompt name" />
+    <select id="gptModels">
+        <option value="gpt-3.5-turbo" selected="selected">GPT-3.5-Turbo</option>
+        <option value="gpt-4o">GPT-4o</option>
+        <option value="gpt-4-turbo">GPT-4-Turbo</option>
+    </select>
+    <textarea id="context" placeholder="Enter the context here..."></textarea>
+    <textarea id="prompt" placeholder="Enter your prompt here..."></textarea>
+    <div id="imageContainer" contenteditable="true" class="image-paste-area">
+        Paste image here (Ctrl+V)
+    </div>
+    <button id="clearImage">Clear Image</button>
+    <button id="savePrompt">Save Prompt</button>
+    <br />
+    <br />
+    <select id="savedPrompts">
+        <option value="">Select a saved prompt</option>
+    </select>
+    <button id="loadPrompt">Load Prompt</button>
+    <button id="setAsDefault">Set as Default</button>
+    <button id="clearAllPresets">Clear All Presets</button>
+    <br />
+    <button id="query">Use Prompt</button>
+    <button id="clearDebugMessages">Clear Debug Messages</button>
+    <div id="debugMessages"></div>
+    <div id="response"></div>
+</div>
+<script src="popup.js"></script>
+</body>
+</html>
