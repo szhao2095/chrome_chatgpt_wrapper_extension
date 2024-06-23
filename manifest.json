@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "OpenAI Prompt Saver",
+  "name": "AI Chat Wrapper",
   "version": "1.0",
-  "description": "A Chrome extension to save and reuse prompts with OpenAI's API.",
+  "description": "A Chrome extension to save and reuse prompts with AI chats.",
   "permissions": ["storage", "activeTab", "scripting", "tabs"],
   "background": {
     "service_worker": "background.js"
@@ -24,7 +24,7 @@
       "suggested_key": {
         "default": "Ctrl+Shift+U"
       },
-      "description": "Open the prompt saver tab"
+      "description": "Open the chat prompt tab"
     }
   }
 }
