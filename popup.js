@@ -25,7 +25,12 @@ document.addEventListener('DOMContentLoaded', () => {
         const defaultPromptIndex = result.defaultPromptIndex;
 
         logDebugMessage('Loaded prompts:', prompts);
+        logDebugMessage('Default prompt index:', defaultPromptIndex);
         prompts.forEach((prompt, index) => {
+            logDebugMessage('Adding prompt to select:', {
+                index,
+                name: prompt.name
+            });
             const option = document.createElement('option');
             option.value = index;
             option.text = prompt.name;
@@ -33,6 +38,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         if (defaultPromptIndex !== undefined && prompts[defaultPromptIndex]) {
+            logDebugMessage('Setting default prompt:', prompts[defaultPromptIndex]);
             savedPromptsSelect.value = defaultPromptIndex;
             loadPrompt(prompts[defaultPromptIndex]);
         }
@@ -52,7 +58,7 @@ document.addEventListener('DOMContentLoaded', () => {
             model: selectedModel
         });
 
-        if (promptName && context && prompt) {
+        if (promptName) {
             chrome.storage.local.get('prompts', (result) => {
                 let prompts = result.prompts || [];
                 const existingPromptIndex = prompts.findIndex(p => p.name === promptName);
@@ -103,6 +109,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
+
     // Use the current prompt
     usePromptButton.addEventListener('click', () => {
         const context = contextTextarea.value;
@@ -123,8 +130,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 .then(blob => {
                     const reader = new FileReader();
                     reader.onloadend = () => {
-                        const base64data = reader.result;//.split(',')[1];
-                        console.log("Image data: ", base64data)
+                        const base64data = reader.result; // .split(',')[1];
+                        logDebugMessage('Image data:', base64data);
                         const requestBody = {
                             model: model,
                             messages: [{
@@ -169,16 +176,23 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                 ]
             };
+            logDebugMessage('Request body without image:', requestBody);
             sendRequest(JSON.stringify(requestBody));
         }
     });
 
+
     function sendRequest(requestBody) {
         responseDiv.textContent = "";
         responseDiv.classList.add('active'); // Add active class
-        responseContentDiv.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        responseContentDiv.scrollIntoView({
+            behavior: 'smooth',
+            block: 'start'
+        });
         responseContentDiv.style.scrollMarginTop = '20px'; // Adjust the margin as needed
+
         logDebugMessage('\n\n===================== Sending payload: ', requestBody, " =====================\n\n");
+
         fetch('https://api.openai.com/v1/chat/completions', {
                 method: 'POST',
                 headers: {
@@ -190,10 +204,13 @@ document.addEventListener('DOMContentLoaded', () => {
             .then(response => response.json())
             .then(data => {
                 responseDiv.classList.remove('active'); // Remove active class
+
                 if (data.error) {
                     throw new Error(data.error.message);
                 }
+
                 logDebugMessage('API response:', data);
+
                 if (data.choices && data.choices[0] && data.choices[0].message) {
                     responseDiv.textContent = data.choices[0].message.content;
                 } else {
@@ -206,6 +223,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 responseDiv.textContent = 'Error: ' + error.message;
             });
     }
+
 
     // Load selected prompt
     loadPromptButton.addEventListener('click', () => {
