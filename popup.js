@@ -5,6 +5,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const promptTextarea = document.getElementById('prompt');
     const imageContainer = document.getElementById('imageContainer');
     const clearImageButton = document.getElementById('clearImage');
+    const usePromptButton = document.getElementById('query');
+    const responseContentDiv = document.getElementById('responseContentDiv');
+    const responseDiv = document.getElementById('response');
 
     const savePromptButton = document.getElementById('savePrompt');
     const savedPromptsSelect = document.getElementById('savedPrompts');
@@ -12,9 +15,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const setAsDefaultButton = document.getElementById('setAsDefault');
     const clearAllPresetsButton = document.getElementById('clearAllPresets');
 
-    const usePromptButton = document.getElementById('query');
     const clearDebugMessagesButton = document.getElementById('clearDebugMessages');
-    const responseDiv = document.getElementById('response');
     const debugMessagesDiv = document.getElementById('debugMessages');
 
 
@@ -174,6 +175,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function sendRequest(requestBody) {
         responseDiv.textContent = "";
+        responseDiv.classList.add('active'); // Add active class
+        responseContentDiv.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        responseContentDiv.style.scrollMarginTop = '20px'; // Adjust the margin as needed
         logDebugMessage('\n\n===================== Sending payload: ', requestBody, " =====================\n\n");
         fetch('https://api.openai.com/v1/chat/completions', {
                 method: 'POST',
@@ -185,6 +189,7 @@ document.addEventListener('DOMContentLoaded', () => {
             })
             .then(response => response.json())
             .then(data => {
+                responseDiv.classList.remove('active'); // Remove active class
                 if (data.error) {
                     throw new Error(data.error.message);
                 }
@@ -197,6 +202,7 @@ document.addEventListener('DOMContentLoaded', () => {
             })
             .catch(error => {
                 console.error('Error:', error);
+                responseDiv.classList.remove('active'); // Remove active class
                 responseDiv.textContent = 'Error: ' + error.message;
             });
     }

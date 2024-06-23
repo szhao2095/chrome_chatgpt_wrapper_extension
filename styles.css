@@ -1,10 +1,32 @@
 body {
   font-family: Arial, sans-serif;
-  padding: 10px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin: 0;
+  font-size: 18px;
+}
+
+.container {
+  width: 100%;
+  max-width: 600px;
+  padding: 20px;
+  background-color: white;
+  box-sizing: border-box;
+}
+
+.content {
+  margin-bottom: 30px;
 }
 
 h1 {
   font-size: 20px;
+  text-align: center;
+}
+
+h2 {
+  font-size: 18px;
+  text-align: center;
 }
 
 input[type="text"], textarea {
@@ -26,11 +48,43 @@ textarea {
   justify-content: center;
   text-align: center;
   background-color: #f9f9f9;
+  overflow: hidden; /* Ensure the container does not overflow */
+}
+
+.image-paste-area img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain; /* Ensure the image fits within the container while maintaining its aspect ratio */
 }
 
 button {
-  margin-top: 10px;
+  margin-bottom: 10px;
+  padding: 5px;
   width: 100%;
+}
+
+.big-blue-button {
+  background-color: #4e66de;
+  color: white;
+  padding: 15px;
+  font-size: 16px;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: background-color 0.3s, transform 0.3s;
+}
+
+.big-blue-button:hover {
+  background-color: #3550d4;
+}
+
+.big-red-button {
+  background-color: #de4e4e;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: background-color 0.3s, transform 0.3s;
 }
 
 select {
@@ -38,18 +92,59 @@ select {
   margin-bottom: 10px;
 }
 
+@keyframes loading {
+  0% {
+    background-color: hsl(0, 0%, 75%);
+  }
+  100% {
+    background-color: hsl(0, 0%, 95%);
+  }
+}
+
 #response {
-  margin-top: 10px;
   white-space: pre-wrap;
-  background-color: #f0f0f0;
+  background-color: #f0f0f0; /* Original grey color */
   border: 1px solid #ccc;
-  padding: 10px;
+  padding: 15px;
+  border-radius: 5px; /* Rounded corners */
+  font-size: 16px; /* Slightly larger font */
+  color: #333; /* Dark text color for better readability */
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.1); /* Subtle shadow for depth */
+  margin-top: 10px;
+  transition: background-color 0.3s, border-color 0.3s; /* Smooth transition */
+  position: relative;
+  overflow: hidden;
+  min-height: 200px;
+}
+
+#response.active {
+  background-color: #e0e0e0; /* Slightly different grey to show loading */
+  background-size: 200% 100%;
+  animation: loading 1s infinite alternate;
+}
+
+#response.active::before {
+  content: "";
+  display: block;
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-size: 200% 100%;
+  animation: loading 1s infinite alternate;
 }
 
 #debugMessages {
-  margin-top: 10px;
   white-space: pre-wrap;
   background-color: #f0f0f0;
   border: 1px solid #ccc;
   padding: 10px;
+  font-size: 14px;
+  overflow: scroll;
+}
+
+.footer {
+  width: 100%;
+  height: 50px; /* Adjust the height as needed */
 }
