@@ -1,3 +1,6 @@
+
+import { Logger } from './utils.js';
+
 document.addEventListener('DOMContentLoaded', () => {
     const promptNameInput = document.getElementById('promptName');
     const gptModelsSelect = document.getElementById('gptModels');
@@ -16,7 +19,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const clearAllPresetsButton = document.getElementById('clearAllPresets');
 
     const clearDebugMessagesButton = document.getElementById('clearDebugMessages');
-    const debugMessagesDiv = document.getElementById('debugMessages');
+    const logger = Logger.getInstance(document.getElementById('debugMessages'));
 
 
     // Load saved prompts from storage
@@ -24,10 +27,10 @@ document.addEventListener('DOMContentLoaded', () => {
         const prompts = result.prompts || [];
         const defaultPromptIndex = result.defaultPromptIndex;
 
-        logDebugMessage('Loaded prompts:', prompts);
-        logDebugMessage('Default prompt index:', defaultPromptIndex);
+        logger.logDebugMessage('Loaded prompts:', prompts);
+        logger.logDebugMessage('Default prompt index:', defaultPromptIndex);
         prompts.forEach((prompt, index) => {
-            logDebugMessage('Adding prompt to select:', {
+            logger.logDebugMessage('Adding prompt to select:', {
                 index,
                 name: prompt.name
             });
@@ -38,7 +41,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         if (defaultPromptIndex !== undefined && prompts[defaultPromptIndex]) {
-            logDebugMessage('Setting default prompt:', prompts[defaultPromptIndex]);
+            logger.logDebugMessage('Setting default prompt:', prompts[defaultPromptIndex]);
             savedPromptsSelect.value = defaultPromptIndex;
             loadPrompt(prompts[defaultPromptIndex]);
         }
@@ -51,7 +54,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const prompt = promptTextarea.value;
         const selectedModel = gptModelsSelect.value;
 
-        logDebugMessage('Saving prompt:', {
+        logger.logDebugMessage('Saving prompt:', {
             name: promptName,
             context: context,
             prompt: prompt,
@@ -71,7 +74,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         prompt: prompt,
                         model: selectedModel
                     };
-                    logDebugMessage('Prompt updated:', prompts[existingPromptIndex]);
+                    logger.logDebugMessage('Prompt updated:', prompts[existingPromptIndex]);
                 } else {
                     // Add new prompt
                     prompts.push({
@@ -80,13 +83,13 @@ document.addEventListener('DOMContentLoaded', () => {
                         prompt: prompt,
                         model: selectedModel
                     });
-                    logDebugMessage('Prompt added:', prompts[prompts.length - 1]);
+                    logger.logDebugMessage('Prompt added:', prompts[prompts.length - 1]);
                 }
 
                 chrome.storage.local.set({
                     prompts
                 }, () => {
-                    logDebugMessage('Prompts saved:', prompts);
+                    logger.logDebugMessage('Prompts saved:', prompts);
 
                     // Update the dropdown menu
                     const optionExists = Array.from(savedPromptsSelect.options).some(option => option.value == existingPromptIndex);
@@ -116,14 +119,14 @@ document.addEventListener('DOMContentLoaded', () => {
         const prompt = promptTextarea.value;
         const model = gptModelsSelect.value;
 
-        logDebugMessage('Using context:', context);
-        logDebugMessage('Using prompt:', prompt);
-        logDebugMessage('Selected model:', model);
+        logger.logDebugMessage('Using context:', context);
+        logger.logDebugMessage('Using prompt:', prompt);
+        logger.logDebugMessage('Selected model:', model);
 
         const imgElement = imageContainer.querySelector('img');
 
         if (imgElement) {
-            logDebugMessage('Image found, adding to payload...');
+            logger.logDebugMessage('Image found, adding to payload...');
             const imgSrc = imgElement.src;
             fetch(imgSrc)
                 .then(response => response.blob())
@@ -131,7 +134,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     const reader = new FileReader();
                     reader.onloadend = () => {
                         const base64data = reader.result; // .split(',')[1];
-                        logDebugMessage('Image data:', base64data);
+                        logger.logDebugMessage('Image data:', base64data);
                         const requestBody = {
                             model: model,
                             messages: [{
@@ -176,7 +179,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                 ]
             };
-            logDebugMessage('Request body without image:', requestBody);
+            logger.logDebugMessage('Request body without image:', requestBody);
             sendRequest(JSON.stringify(requestBody));
         }
     });
@@ -191,7 +194,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         responseContentDiv.style.scrollMarginTop = '20px'; // Adjust the margin as needed
 
-        logDebugMessage('\n\n===================== Sending payload: ', requestBody, " =====================\n\n");
+        logger.logDebugMessage('\n\n===================== Sending payload: ', requestBody, " =====================\n\n");
 
         fetch('https://api.openai.com/v1/chat/completions', {
                 method: 'POST',
@@ -209,7 +212,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     throw new Error(data.error.message);
                 }
 
-                logDebugMessage('API response:', data);
+                logger.logDebugMessage('API response:', data);
 
                 if (data.choices && data.choices[0] && data.choices[0].message) {
                     responseDiv.textContent = data.choices[0].message.content;
@@ -233,7 +236,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const prompts = result.prompts || [];
                 const selectedPrompt = prompts[selectedIndex];
                 if (selectedPrompt) {
-                    logDebugMessage('Loading prompt:', selectedPrompt);
+                    logger.logDebugMessage('Loading prompt:', selectedPrompt);
                     loadPrompt(selectedPrompt);
                 }
             });
@@ -247,7 +250,7 @@ document.addEventListener('DOMContentLoaded', () => {
             chrome.storage.local.set({
                 defaultPromptIndex: selectedIndex
             }, () => {
-                logDebugMessage('Set default prompt index:', selectedIndex);
+                logger.logDebugMessage('Set default prompt index:', selectedIndex);
             });
         }
     });
@@ -255,7 +258,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     clearAllPresetsButton.addEventListener('click', () => {
         chrome.storage.local.remove('prompts', () => {
-            logDebugMessage('All prompts cleared');
+            logger.logDebugMessage('All prompts cleared');
             savedPromptsSelect.innerHTML = '<option value="">Select a saved prompt</option>';
         });
     });
@@ -271,7 +274,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 reader.onload = (event) => {
                     const img = document.createElement('img');
                     img.src = event.target.result;
-                    logDebugMessage('Image pasted:', img.src);
+                    logger.logDebugMessage('Image pasted:', img.src);
                     imageContainer.innerHTML = ''; // Clear the container
                     imageContainer.appendChild(img);
                 };
@@ -282,7 +285,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Clear image
     clearImageButton.addEventListener('click', () => {
-        logDebugMessage('Clearing image');
+        logger.logDebugMessage('Clearing image');
         imageContainer.innerHTML = 'Paste image here (Ctrl+V)';
     });
 
@@ -295,16 +298,7 @@ document.addEventListener('DOMContentLoaded', () => {
         imageContainer.innerHTML = 'Paste image here (Ctrl+V)'; // Clear the image area
     }
 
-    // Log debug messages to the debug area
-    function logDebugMessage(...messages) {
-        const message = messages.map(msg => JSON.stringify(msg)).join(' ');
-        console.log(message);
-        const div = document.createElement('div');
-        div.textContent = message;
-        debugMessagesDiv.appendChild(div);
-    }
-
     clearDebugMessagesButton.addEventListener('click', () => {
-        debugMessagesDiv.innerHTML = '';
+        logger.clearDebugMessages();
     });
 });
