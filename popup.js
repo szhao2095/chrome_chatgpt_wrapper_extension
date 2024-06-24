@@ -1,4 +1,5 @@
 
+import { OpenAIChatProvider } from './api.js';
 import { Logger } from './utils.js';
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -101,131 +102,10 @@ document.addEventListener('DOMContentLoaded', () => {
                     } else {
                         savedPromptsSelect.options[existingPromptIndex].text = promptName;
                     }
-
-                    //                    promptNameInput.value = '';
-                    //                    contextTextarea.value = '';
-                    //                    promptTextarea.value = '';
-                    //                    gptModelsSelect.value = 'gpt-3.5-turbo'; // Reset model to default or choose appropriate default
-                    //                    imageContainer.innerHTML = 'Paste image here (Ctrl+V)';
                 });
             });
         }
     });
-
-
-    // Use the current prompt
-    usePromptButton.addEventListener('click', () => {
-        const context = contextTextarea.value;
-        const prompt = promptTextarea.value;
-        const model = gptModelsSelect.value;
-
-        logger.logDebugMessage('Using context:', context);
-        logger.logDebugMessage('Using prompt:', prompt);
-        logger.logDebugMessage('Selected model:', model);
-
-        const imgElement = imageContainer.querySelector('img');
-
-        if (imgElement) {
-            logger.logDebugMessage('Image found, adding to payload...');
-            const imgSrc = imgElement.src;
-            fetch(imgSrc)
-                .then(response => response.blob())
-                .then(blob => {
-                    const reader = new FileReader();
-                    reader.onloadend = () => {
-                        const base64data = reader.result; // .split(',')[1];
-                        logger.logDebugMessage('Image data:', base64data);
-                        const requestBody = {
-                            model: model,
-                            messages: [{
-                                    role: 'system',
-                                    content: context
-                                },
-                                {
-                                    role: 'user',
-                                    content: [{
-                                            type: "text",
-                                            text: prompt
-                                        },
-                                        {
-                                            type: "image_url",
-                                            image_url: {
-                                                url: base64data,
-                                                detail: "low"
-                                            }
-                                        }
-                                    ]
-                                }
-                            ]
-                        };
-                        sendRequest(JSON.stringify(requestBody));
-                    };
-                    reader.readAsDataURL(blob);
-                })
-                .catch(error => {
-                    console.error('Error:', error);
-                    responseDiv.textContent = 'Error: ' + error.message;
-                });
-        } else {
-            const requestBody = {
-                model: model,
-                messages: [{
-                        role: 'system',
-                        content: context
-                    },
-                    {
-                        role: 'user',
-                        content: prompt
-                    }
-                ]
-            };
-            logger.logDebugMessage('Request body without image:', requestBody);
-            sendRequest(JSON.stringify(requestBody));
-        }
-    });
-
-
-    function sendRequest(requestBody) {
-        responseDiv.textContent = "";
-        responseDiv.classList.add('active'); // Add active class
-        responseContentDiv.scrollIntoView({
-            behavior: 'smooth',
-            block: 'start'
-        });
-        responseContentDiv.style.scrollMarginTop = '20px'; // Adjust the margin as needed
-
-        logger.logDebugMessage('\n\n===================== Sending payload: ', requestBody, " =====================\n\n");
-
-        fetch('https://api.openai.com/v1/chat/completions', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer sk-proj-byf35DMGz8sqL6Bh0CHsT3BlbkFJkVQYcPP8B0QbxGr4u6`
-                },
-                body: requestBody
-            })
-            .then(response => response.json())
-            .then(data => {
-                responseDiv.classList.remove('active'); // Remove active class
-
-                if (data.error) {
-                    throw new Error(data.error.message);
-                }
-
-                logger.logDebugMessage('API response:', data);
-
-                if (data.choices && data.choices[0] && data.choices[0].message) {
-                    responseDiv.textContent = data.choices[0].message.content;
-                } else {
-                    responseDiv.textContent = 'Unexpected API response structure.';
-                }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                responseDiv.classList.remove('active'); // Remove active class
-                responseDiv.textContent = 'Error: ' + error.message;
-            });
-    }
 
 
     // Load selected prompt
@@ -295,7 +175,75 @@ document.addEventListener('DOMContentLoaded', () => {
         contextTextarea.value = prompt.context;
         promptTextarea.value = prompt.prompt;
         gptModelsSelect.value = prompt.model || 'gpt-3.5-turbo'; // Default if model is not defined
-        imageContainer.innerHTML = 'Paste image here (Ctrl+V)'; // Clear the image area
+    }
+
+    // Use the current prompt
+    usePromptButton.addEventListener('click', () => {
+        const context = contextTextarea.value;
+        const prompt = promptTextarea.value;
+        const model = gptModelsSelect.value;
+        let imageData = null;
+
+        const imgElement = imageContainer.querySelector('img');
+        if (imgElement) {
+            imageData = imgElement.src;
+        }
+
+        logger.logDebugMessage('Using context:', context);
+        logger.logDebugMessage('Using prompt:', prompt);
+        logger.logDebugMessage('Selected model:', model);
+        logger.logDebugMessage('Image data:', imageData);
+
+        let aiChatProvider;
+        if (model.startsWith("claude")) {
+            aiChatProvider = new ClaudeChatProvider('YOUR_CLAUDE_API_KEY', model, context, prompt, imageData);
+        } else if (model.startsWith("gpt")) {
+            aiChatProvider = new OpenAIChatProvider('', model, context, prompt, imageData);
+        } else {
+            logger.logDebugMessage('Invalid model:', model);
+            throw new Error("Invalid model");
+        }
+
+        handleResponseDiv(true);
+        aiChatProvider.sendRequest()
+            .then(data => handleProviderResponse(aiChatProvider.getName(), data))
+            .catch(error => {
+                handleResponseDiv(false); // Remove active class
+                console.error('Error:', error);
+                logger.logDebugMessage(error);
+                document.getElementById('response').textContent = 'Error: ' + error.message;
+        });
+    });
+
+    function handleResponseDiv(isActive) {
+        if (isActive) {
+            responseDiv.classList.add('active');
+            responseDiv.textContent = "";
+            responseContentDiv.scrollIntoView({
+                behavior: 'smooth',
+                block: 'start'
+            });
+            responseContentDiv.style.scrollMarginTop = '20px'; // Adjust the margin as needed
+        } else {
+            responseDiv.classList.remove('active');
+        }
+    };
+
+    function handleProviderResponse(providerName, data) {
+        handleResponseDiv(false); // Remove active class
+        if (data.error) {
+            throw new Error(data.error.message);
+        }
+        if (providerName === OpenAIChatProvider.getClassName()) {
+            if (data.choices && data.choices[0] && data.choices[0].message) {
+                document.getElementById('response').textContent = data.choices[0].message.content;
+            } else {
+                document.getElementById('response').textContent = 'Unexpected API response structure.';
+            }
+        } else {
+            logger.logDebugMessage('Handler not implemented for provider:', providerName);
+            throw new Error("Handler not implemented for provider");
+        }
     }
 
     clearDebugMessagesButton.addEventListener('click', () => {
