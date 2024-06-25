@@ -12,6 +12,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const usePromptButton = document.getElementById('query');
     const responseContentDiv = document.getElementById('responseContentDiv');
     const responseDiv = document.getElementById('response');
+    const responseTabsDiv = document.getElementById('responseTabs');
 
     const savePromptButton = document.getElementById('savePrompt');
     const savedPromptsSelect = document.getElementById('savedPrompts');
@@ -53,13 +54,13 @@ document.addEventListener('DOMContentLoaded', () => {
         const promptName = promptNameInput.value;
         const context = contextTextarea.value;
         const prompt = promptTextarea.value;
-        const selectedModel = gptModelsSelect.value;
+        const selectedModels = Array.from(gptModelsSelect.selectedOptions).map(option => option.value);
 
         logger.logDebugMessage('Saving prompt:', {
             name: promptName,
             context: context,
             prompt: prompt,
-            model: selectedModel
+            models: selectedModels
         });
 
         if (promptName) {
@@ -73,7 +74,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         name: promptName,
                         context: context,
                         prompt: prompt,
-                        model: selectedModel
+                        models: selectedModels
                     };
                     logger.logDebugMessage('Prompt updated:', prompts[existingPromptIndex]);
                 } else {
@@ -82,7 +83,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         name: promptName,
                         context: context,
                         prompt: prompt,
-                        model: selectedModel
+                        models: selectedModels
                     });
                     logger.logDebugMessage('Prompt added:', prompts[prompts.length - 1]);
                 }
@@ -174,14 +175,33 @@ document.addEventListener('DOMContentLoaded', () => {
         promptNameInput.value = prompt.name;
         contextTextarea.value = prompt.context;
         promptTextarea.value = prompt.prompt;
-        gptModelsSelect.value = prompt.model || 'gpt-3.5-turbo'; // Default if model is not defined
+
+        // Clear previous selections
+        Array.from(gptModelsSelect.options).forEach(option => option.selected = false);
+
+        // Select the options that match the models in the prompt
+        if (Array.isArray(prompt.models)) {
+            logger.logDebugMessage('Multi model mode:', prompt.models);
+            prompt.models.forEach(model => {
+                const option = Array.from(gptModelsSelect.options).find(option => option.value === model);
+                if (option) {
+                    option.selected = true;
+                }
+            });
+        } else {
+            // For backward compatibility if `prompt.model` is a single string
+            const option = Array.from(gptModelsSelect.options).find(option => option.value === prompt.model);
+            if (option) {
+                option.selected = true;
+            }
+        }
     }
 
     // Use the current prompt
     usePromptButton.addEventListener('click', () => {
         const context = contextTextarea.value;
         const prompt = promptTextarea.value;
-        const model = gptModelsSelect.value;
+        const models = Array.from(gptModelsSelect.selectedOptions).map(option => option.value);
         let imageData = null;
 
         const imgElement = imageContainer.querySelector('img');
@@ -191,24 +211,63 @@ document.addEventListener('DOMContentLoaded', () => {
 
         logger.logDebugMessage('Using context:', context);
         logger.logDebugMessage('Using prompt:', prompt);
-        logger.logDebugMessage('Selected model:', model);
+        logger.logDebugMessage('Selected models:', models);
         logger.logDebugMessage('Image data:', imageData);
 
-        let AIName;
-        if (model.startsWith("claude")) {
-            AIName = ClaudeChatProvider.getClassName();
-        } else if (model.startsWith("gpt")) {
-            AIName = OpenAIChatProvider.getClassName();
-        } else {
-            logger.logDebugMessage('Invalid model:', model);
-            throw new Error("Invalid model");
-        }
+        // Create response tabs before making API requests
+        createResponseTabs(models);
 
-        handleResponseDiv(true);
-        sendApiRequest(AIName, model, context, prompt, imageData)
-            .then(data => handleProviderResponse(AIName, data))
-            .catch(error => handleProviderError(AIName, error))
+        // Clear any previous responses
+        models.forEach(model => {
+            const responseModelDiv = document.createElement('div');
+            responseModelDiv.id = 'response-' + model;
+            responseModelDiv.classList.add('response-content');
+            responseModelDiv.style.display = 'none'; // Hide the response initially
+            responseContentDiv.appendChild(responseModelDiv);
+        });
+
+        models.forEach(model => {
+            let AIName;
+            if (model.startsWith("claude")) {
+                AIName = ClaudeChatProvider.getClassName();
+            } else if (model.startsWith("gpt")) {
+                AIName = OpenAIChatProvider.getClassName();
+            } else {
+                logger.logDebugMessage('Invalid model:', model);
+                throw new Error("Invalid model");
+            }
+
+            handleResponseDiv(true);
+            sendApiRequest(AIName, model, context, prompt, imageData)
+                .then(data => handleProviderResponse(AIName, model, model === models[0], data))
+                .catch(error => handleProviderError(AIName, model, model === models[0], error));
+        });
     });
+
+    function createResponseTabs(models) {
+        responseTabsDiv.innerHTML = ''; // Clear any existing tabs
+        models.forEach(model => {
+            const tab = document.createElement('button');
+            tab.textContent = model;
+            tab.id = 'tab-' + model;
+            tab.classList.add('response-tab');
+            tab.addEventListener('click', () => {
+                switchResponse(model);
+            });
+            responseTabsDiv.appendChild(tab);
+        });
+    }
+
+    // Function to switch the response content
+    function switchResponse(model) {
+        const content = document.getElementById('response-' + model).textContent;
+        responseDiv.textContent = content;
+        // Highlight the active tab
+        document.querySelectorAll('.response-tab').forEach(tab => {
+            tab.classList.remove('active');
+        });
+        document.getElementById('tab-' + model).classList.add('active');
+    }
 
     function sendApiRequest(AIName, model, context, prompt, imageUrl) {
         logger.logDebugMessage('sendApiRequest:', AIName, model, context, prompt, imageUrl);
@@ -245,39 +304,42 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
-    function handleProviderResponse(providerName, data) {
+    function handleProviderResponse(providerName, model, switchTo, data) {
         handleResponseDiv(false);
         if (data.error) {
             throw new Error(data.error.message);
         }
+        let responseContent = 'Unexpected API response structure.';
         if (providerName === OpenAIChatProvider.getClassName()) {
             if (data.choices && data.choices[0] && data.choices[0].message) {
-                document.getElementById('response').textContent = data.choices[0].message.content;
-            } else {
-                document.getElementById('response').textContent = 'Unexpected API response structure.';
+                responseContent = data.choices[0].message.content;
             }
         } else if (providerName === ClaudeChatProvider.getClassName()) {
             if (data.content && data.content[0] && data.content[0].text) {
-                document.getElementById('response').textContent = data.content[0].text;
-            } else {
-                document.getElementById('response').textContent = 'Unexpected API response structure.';
+                responseContent = data.content[0].text;
             }
         } else {
             logger.logDebugMessage('Handler not implemented for provider:', providerName);
             throw new Error("Handler not implemented for provider");
         }
+
+        // Store the response in a hidden div
+        document.getElementById('response-' + model).textContent = responseContent;
+
+        // Automatically switch to the first tab's content
+        if (switchTo) {
+            switchResponse(model);
+        }
     }
 
-    function handleProviderError(providerName, error) {
+    function handleProviderError(providerName, model, switchTo, error) {
         handleResponseDiv(false);
-        if (providerName === OpenAIChatProvider.getClassName() || providerName === ClaudeChatProvider.getClassName()) {
-            console.error('Error:', error);
-            logger.logDebugMessage(error);
-            document.getElementById('response').textContent = 'Error: ' + error.message;
-        } else {
-            logger.logDebugMessage('Error handler not implemented for provider:', providerName);
-            throw new Error("Error handler not implemented for provider");
+        const errorMessage = 'Error: ' + error.message;
+        document.getElementById('response-' + model).textContent = errorMessage;
+        if (switchTo) {
+            switchResponse(model);
         }
+        logger.logDebugMessage(error);
     }
 
     clearDebugMessagesButton.addEventListener('click', () => {

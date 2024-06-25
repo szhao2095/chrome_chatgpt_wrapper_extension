@@ -9,7 +9,7 @@
     <div class="content">
         <h1>OpenAI Prompt Saver</h1>
         <input type="text" id="promptName" placeholder="Enter prompt name" />
-        <select id="gptModels">
+        <select id="gptModels" multiple>
             <option value="gpt-3.5-turbo" selected="selected">GPT-3.5-Turbo</option>
             <option value="gpt-4o">GPT-4o</option>
             <option value="claude-3-5-sonnet-20240620">Claude-3.5-Sonnet</option>
@@ -22,8 +22,9 @@
         <button id="clearImage">Clear Image</button>
         <button id="query" class="big-blue-button">Query</button>
     </div>
-    <div  id="responseContentDiv" class="content">
+    <div id="responseContentDiv" class="content">
         <h2>Response</h2>
+        <div id="responseTabs"></div>
         <div id="response"></div>
     </div>
     <div class="content">
