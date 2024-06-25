@@ -74,4 +74,58 @@ class OpenAIChatProvider extends AIChatProvider {
     }
 }
 
-export { OpenAIChatProvider };
+class ClaudeChatProvider extends AIChatProvider {
+    constructor(apiKey, model, context, prompt, imageUrl) {
+        super(apiKey, model, context, prompt, imageUrl);
+    }
+
+    preparePayload() {
+        let userMessage;
+        if (this.imageUrl) {
+            userMessage = {
+                role: 'user',
+                content: [
+                    { type: "text", text: this.prompt },
+                    { type: "image",
+                        "source": {
+                          "type": "base64",
+                          "media_type": "image/png",
+                          "data": this.imageUrl.split(",")[1],
+                        }
+                    }
+                ]
+            };
+        } else {
+            userMessage = { role: 'user', content: this.prompt };
+        }
+        return JSON.stringify({
+            model: this.model,
+            max_tokens: 1024,
+            messages: [
+                { role: 'user', content: this.context },
+                { role: 'assistant', content: "How may I help you today?" },
+                userMessage
+            ]
+        });
+    }
+
+    sendRequest() {
+        const requestBody = this.preparePayload();
+        return fetch('https://api.anthropic.com/v1/messages', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'x-api-key': this.apiKey,
+                'anthropic-version': '2023-06-01'
+            },
+            body: requestBody
+        })
+        .then(response => response.json());
+    }
+
+    static getClassName() {
+        return "ClaudeChatProvider";
+    }
+}
+
+export { OpenAIChatProvider, ClaudeChatProvider };

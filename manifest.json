@@ -5,7 +5,8 @@
   "description": "A Chrome extension to save and reuse prompts with AI chats.",
   "permissions": ["storage", "activeTab", "scripting", "tabs"],
   "background": {
-    "service_worker": "background.js"
+    "service_worker": "background.js",
+    "type": "module"
   },
   "action": {
     "default_icon": {
@@ -26,5 +27,9 @@
       },
       "description": "Open the chat prompt tab"
     }
-  }
+  },
+  "host_permissions": [
+    "https://api.anthropic.com/",
+    "https://api.openai.com/"
+  ]
 }

@@ -1,5 +1,5 @@
 
-import { OpenAIChatProvider } from './api.js';
+import { OpenAIChatProvider, ClaudeChatProvider } from './api.js';
 import { Logger } from './utils.js';
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -194,26 +194,42 @@ document.addEventListener('DOMContentLoaded', () => {
         logger.logDebugMessage('Selected model:', model);
         logger.logDebugMessage('Image data:', imageData);
 
-        let aiChatProvider;
+        let AIName;
         if (model.startsWith("claude")) {
-            aiChatProvider = new ClaudeChatProvider('YOUR_CLAUDE_API_KEY', model, context, prompt, imageData);
+            AIName = ClaudeChatProvider.getClassName();
         } else if (model.startsWith("gpt")) {
-            aiChatProvider = new OpenAIChatProvider('', model, context, prompt, imageData);
+            AIName = OpenAIChatProvider.getClassName();
         } else {
             logger.logDebugMessage('Invalid model:', model);
             throw new Error("Invalid model");
         }
 
         handleResponseDiv(true);
-        aiChatProvider.sendRequest()
-            .then(data => handleProviderResponse(aiChatProvider.getName(), data))
-            .catch(error => {
-                handleResponseDiv(false); // Remove active class
-                console.error('Error:', error);
-                logger.logDebugMessage(error);
-                document.getElementById('response').textContent = 'Error: ' + error.message;
-        });
+        sendApiRequest(AIName, model, context, prompt, imageData)
+            .then(data => handleProviderResponse(AIName, data))
+            .catch(error => handleProviderError(AIName, error))
     });
+
+    function sendApiRequest(AIName, model, context, prompt, imageUrl) {
+        logger.logDebugMessage('sendApiRequest:', AIName, model, context, prompt, imageUrl);
+        return new Promise((resolve, reject) => {
+            chrome.runtime.sendMessage({
+                action: "sendApiRequest",
+                AIName: AIName,
+                model: model,
+                context: context,
+                prompt: prompt,
+                imageUrl: imageUrl
+            }, response => {
+                logger.logDebugMessage('sendApiRequest response:', response);
+                if (response.success) {
+                    resolve(response.data);
+                } else {
+                    reject(new Error(response.error));
+                }
+            });
+        });
+    }
 
     function handleResponseDiv(isActive) {
         if (isActive) {
@@ -230,7 +246,7 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     function handleProviderResponse(providerName, data) {
-        handleResponseDiv(false); // Remove active class
+        handleResponseDiv(false);
         if (data.error) {
             throw new Error(data.error.message);
         }
@@ -240,9 +256,27 @@ document.addEventListener('DOMContentLoaded', () => {
             } else {
                 document.getElementById('response').textContent = 'Unexpected API response structure.';
             }
+        } else if (providerName === ClaudeChatProvider.getClassName()) {
+            if (data.content && data.content[0] && data.content[0].text) {
+                document.getElementById('response').textContent = data.content[0].text;
+            } else {
+                document.getElementById('response').textContent = 'Unexpected API response structure.';
+            }
         } else {
             logger.logDebugMessage('Handler not implemented for provider:', providerName);
             throw new Error("Handler not implemented for provider");
+        }
+    }
+
+    function handleProviderError(providerName, error) {
+        handleResponseDiv(false);
+        if (providerName === OpenAIChatProvider.getClassName() || providerName === ClaudeChatProvider.getClassName()) {
+            console.error('Error:', error);
+            logger.logDebugMessage(error);
+            document.getElementById('response').textContent = 'Error: ' + error.message;
+        } else {
+            logger.logDebugMessage('Error handler not implemented for provider:', providerName);
+            throw new Error("Error handler not implemented for provider");
         }
     }
 
